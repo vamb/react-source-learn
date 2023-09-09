@@ -493,15 +493,27 @@ export function createElement(type, config, children) {
    * 如果获取了 就报错
    */
   if (__DEV__) {
+    // 元素具有 key 属性或者 ref 属性
     if (key || ref) {
+      // 看一下 type 属性中存储的是否是函数 如果是函数就表示当前元素是组件
+      // 如果元素不是组件 就直接返回元素类型字符串
+      // displayName 用于在报错过程中显示是哪一个组件报错了
+      // 如果开发者显示定义了 displayName 属性 就显示开发者定义的
+      // 否则就显示组件名称 如果组件也没有名称 就显示 'Unknown'
       const displayName =
         typeof type === 'function'
           ? type.displayName || type.name || 'Unknown'
           : type;
+      // 如果 key 属性存在
       if (key) {
+        // 为 props 对象添加 key 属性
+        // 并指定当通过 props 对象获取 key 属性时报错
         defineKeyPropWarningGetter(props, displayName);
       }
+      // 如果 ref 属性存在
       if (ref) {
+        // 为 props 对象添加 ref 属性
+        // 并指定当通过 props 对象获取 ref 属性时报错
         defineRefPropWarningGetter(props, displayName);
       }
     }
