@@ -142,6 +142,7 @@ function warnIfStringRefCannotBeAutoConverted(config) {
  * @param {*} source An annotation object (added by a transpiler or otherwise)
  * indicating filename, line number, and/or other information.
  * @internal
+ *
  * 接收参数 返回 ReactElement
  */
 const ReactElement = function(type, key, ref, self, source, owner, props) {
@@ -149,7 +150,8 @@ const ReactElement = function(type, key, ref, self, source, owner, props) {
 
     /**
      * 组件的类型，十六进制数值或者 Symbol 值
-     * React 在最终渲染DOM的时候
+     * React 在最终渲染DOM的时候，需要确保元素的类型是 REACT_ELEMENT_TYPE
+     * 需要此属性作为判断依据
      */
     $$typeof: REACT_ELEMENT_TYPE,
 
@@ -396,13 +398,17 @@ export function createElement(type, config, children) {
   let source = null;
 
   if (config != null) {
+    // 如果 config 对象中有合法的 ref 属性
     if (hasValidRef(config)) {
       ref = config.ref;
-
+      // 如果在开发环境中
       if (__DEV__) {
+        // 如果 ref 属性的值被设置成字符串形式就报一个提示
+        // 说明此用法在将来的版本中会被删除
         warnIfStringRefCannotBeAutoConverted(config);
       }
     }
+    // 如果 config 对象中有合法的 key 属性
     if (hasValidKey(config)) {
       key = '' + config.key;
     }
@@ -410,11 +416,15 @@ export function createElement(type, config, children) {
     self = config.__self === undefined ? null : config.__self;
     source = config.__source === undefined ? null : config.__source;
     // Remaining properties are added to a new props object
+    // 遍历 config 对象
     for (propName in config) {
+      // 如果当前遍历到的属性是对象自身属性
+      // 并且在 RESERVED_PROPS 对象中不存在该属性
       if (
         hasOwnProperty.call(config, propName) &&
         !RESERVED_PROPS.hasOwnProperty(propName)
       ) {
+        // 将满足条件的属性添加到 props 对象中（普通属性）
         props[propName] = config[propName];
       }
     }
@@ -429,15 +439,24 @@ export function createElement(type, config, children) {
   /**
    * 由于从第三个参数开始及以后都表示子元素
    * 所以减去前两个参数的结果就是子元素的数量
+   * arguments => 实参集合 (type, config, children)
    */
   const childrenLength = arguments.length - 2;
+  // 如果子元素的数量是1
   if (childrenLength === 1) {
+    // 直接将子元素挂载到 props.children 属性上
+    // 此时 children 是对象属性
     props.children = children;
-  } else if (childrenLength > 1) {
+  } else if (childrenLength > 1) { // 如果子元素的数量大于 1
+    // 创建数组，数组中元素的数量等于子元素的数量
     const childArray = Array(childrenLength);
+    // 开启循环
     for (let i = 0; i < childrenLength; i++) {
+      // 将子元素添加到 childArray 数组中
+      // i + 2 的原因是：实参集合的前两个参数不是子元素
       childArray[i] = arguments[i + 2];
     }
+    // 如果是开发环境
     if (__DEV__) {
       if (Object.freeze) {
         Object.freeze(childArray);
@@ -446,15 +465,33 @@ export function createElement(type, config, children) {
     props.children = childArray;
   }
 
-  // Resolve default props
+  /**
+   * 如果当前处理是组件
+   * 看组件身上是否有 defaultProps 属性
+   * 这个属性中存储的是 props 对象中属性的默认值
+   * 遍历 defaultProps 对象 查看对应的 props 属性的值是否为 undefined
+   * 如果为 undefined 就将默认值赋值给对应的 props 属性值
+   */
+
+  // 将 type 属性值视为函数 查看其中是否具有 defaultProps 属性
   if (type && type.defaultProps) {
+    // 将 type 函数下的 defaultProps 属性赋值给 defaultProps 变量
     const defaultProps = type.defaultProps;
+    // 遍历 defaultProps
     for (propName in defaultProps) {
+      // 如果 props 对象中的该属性的值为 undefined
       if (props[propName] === undefined) {
+        // 将 defaultProps 对象中的对应属性的值赋值给 props 对象中的对应属性的值
         props[propName] = defaultProps[propName];
       }
     }
   }
+
+  /**
+   * 在开发环境中 如果元素的 key 属性 或者 ref 属性存在
+   * 检测开发者是否在组件内部通过 props 对象获取了 key 属性或者 ref 属性
+   * 如果获取了 就报错
+   */
   if (__DEV__) {
     if (key || ref) {
       const displayName =
@@ -469,12 +506,15 @@ export function createElement(type, config, children) {
       }
     }
   }
+
+  // 返回 ReactElement
   return ReactElement(
     type,
     key,
     ref,
     self,
     source,
+    // 在 Virtual DOM 中用于识别自定义组件
     ReactCurrentOwner.current,
     props,
   );

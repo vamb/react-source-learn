@@ -33,7 +33,7 @@ export type Interaction = {
   timestamp: number,
   ...
 };
-console.log('pppp test')
+console.log('packages => react => index.js start')
 // Export all exports so that they're available in tests.
 // We can't use export * from in Flow for some reason.
 export {
