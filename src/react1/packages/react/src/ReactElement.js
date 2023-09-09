@@ -142,19 +142,39 @@ function warnIfStringRefCannotBeAutoConverted(config) {
  * @param {*} source An annotation object (added by a transpiler or otherwise)
  * indicating filename, line number, and/or other information.
  * @internal
+ * 接收参数 返回 ReactElement
  */
 const ReactElement = function(type, key, ref, self, source, owner, props) {
   const element = {
-    // This tag allows us to uniquely identify this as a React Element
+
+    /**
+     * 组件的类型，十六进制数值或者 Symbol 值
+     * React 在最终渲染DOM的时候
+     */
     $$typeof: REACT_ELEMENT_TYPE,
 
-    // Built-in properties that belong on the element
+    /**
+     * 元素具体的类型值 如果是元素节点 type 属性中存储的就是 div span 等等
+     * 如果元素是组件 type 属性中存储的就是组件的构造函数
+     */
     type: type,
+    /**
+     * 元素的唯一标识
+     * 用作内部 vdom 对比 提升 DOM 操作性
+     */
     key: key,
+    /**
+     * 存储元素 DOM 对象或者组件 实例对象
+     */
     ref: ref,
+    /**
+     * 存储向组件内部传递的数据
+     */
     props: props,
 
-    // Record the component responsible for creating this element.
+    /**
+     * 记录当前元素所属组件 （记录当前元素是那个组件创建的）
+     */
     _owner: owner,
   };
 
@@ -342,15 +362,34 @@ export function jsxDEV(type, config, maybeKey, source, self) {
 }
 
 /**
- * Create and return a new ReactElement of the given type.
- * See https://reactjs.org/docs/react-api.html#createelement
+ * 创建 React Element
+ * type 元素类型
+ * config 配置属性
+ * children 子元素
+ * 1. 分离 props 属性和特殊属性
+ * 2. 将子元素挂载到 props.children 中
+ * 3. 为 props 属性赋默认值 (defaultProps)
+ * 4. 创建并返回 ReactElement
  */
 export function createElement(type, config, children) {
+  console.log('createElement type => ', type)
+  console.log('createElement config => ', config)
+  console.log('createElement children => ', children)
+  /**
+   * propName -> 属性名称
+   * 用于后面的 for 循环
+   */
   let propName;
 
-  // Reserved names are extracted
+  /**
+   * 存储 React Element 中的普通元素属性 即不包含 key ref self source
+   */
   const props = {};
 
+  /**
+   * 待提取属性
+   * React 内部为了实现某些功能而存在的属性
+   */
   let key = null;
   let ref = null;
   let self = null;
@@ -381,8 +420,16 @@ export function createElement(type, config, children) {
     }
   }
 
-  // Children can be more than one argument, and those are transferred onto
-  // the newly allocated props object.
+  /**
+   * 将第三个及之后的参数挂载到 props.children 属性中
+   * 如果子元素是多个 props.children 是数组
+   * 如果子元素是一个 props.children 是对象
+   */
+
+  /**
+   * 由于从第三个参数开始及以后都表示子元素
+   * 所以减去前两个参数的结果就是子元素的数量
+   */
   const childrenLength = arguments.length - 2;
   if (childrenLength === 1) {
     props.children = children;
@@ -434,8 +481,9 @@ export function createElement(type, config, children) {
 }
 
 /**
- * Return a function that produces ReactElements of a given type.
- * See https://reactjs.org/docs/react-api.html#createfactory
+ * 此方法在 React 对象中进行导出 但官方已经不推荐使用
+ * 作用是返回一个函数 用于根据给定的类型创建 ReactElement
+ * 官方推荐使用 jsx 或者 React.createElement 方法直接创建 ReactElement
  */
 export function createFactory(type) {
   const factory = createElement.bind(null, type);
@@ -540,9 +588,9 @@ export function cloneElement(element, config, children) {
 /**
  * Verifies the object is a ReactElement.
  * See https://reactjs.org/docs/react-api.html#isvalidelement
- * @param {?object} object
- * @return {boolean} True if `object` is a ReactElement.
- * @final
+ * object 是对象
+ * object 不为 null
+ * object 对象中的 $$typeof 属性值为 REACT_ELEMENT_TYPE
  */
 export function isValidElement(object) {
   return (
