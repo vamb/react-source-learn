@@ -52,7 +52,13 @@ function hasValidKey(config) {
   return config.key !== undefined;
 }
 
+/**
+ * 指定当通过 props 对象获取 key 属性时报错
+ * props         组件中的 props 对象
+ * displayName   组件名称标识
+ */
 function defineKeyPropWarningGetter(props, displayName) {
+  // 通过 props 对象获取 key 属性报错
   const warnAboutAccessingKey = function() {
     if (__DEV__) {
       if (!specialPropKeyWarningShown) {
@@ -74,6 +80,11 @@ function defineKeyPropWarningGetter(props, displayName) {
   });
 }
 
+/**
+ * 指定当通过 props 对象获取 ref 属性时报错
+ * props         组件中的 props 对象
+ * displayName   组件名称标识
+ */
 function defineRefPropWarningGetter(props, displayName) {
   const warnAboutAccessingRef = function() {
     if (__DEV__) {
@@ -96,6 +107,9 @@ function defineRefPropWarningGetter(props, displayName) {
   });
 }
 
+/**
+ * 在开发环境中 ref 属性接收的值为字符串 报警告
+ */
 function warnIfStringRefCannotBeAutoConverted(config) {
   if (__DEV__) {
     if (
