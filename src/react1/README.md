@@ -21,6 +21,14 @@
 #### 既然比对的过程从递归变成了可以终端的循环，那么 React 是如何解决中断更新时 DOM 渲染不完全的问题呢？
 #### 其实根本就不存在这个问题，因为在整个过程中，调度器和协调器的工作时在内存中完成的，是可以被打断的，渲染器的工作被设定成不可以被打断，所以不存在 DOM 渲染不完全的问题。
 
+### 4.7 双缓存技术
+#### 在 React 中，DOM的更新采用了双缓存技术，双缓存技术致力于更快速的 DOM 更新。
+#### 什么是双缓存？举个例子，使用 canvas 绘制动画时，在绘制每一帧前都会清除上一帧的画面，清除上一帧需要花费时间，如果当前帧画面计算量又比较大，又需要花费比较长的时间，这就导致上一帧清除到下一帧显示中间会有较长的间隙，就会出现白屏。
+#### 为了解决这个问题，我们可以在内存中绘制当前帧动画， 绘制完毕后直接用当前帧替换上一帧画面，这样的话在帧画面替换的过程中就会节约非常多的时间，就不会出现白屏问题。这种在内存中构建并直接替换的技术叫做双缓存。
+#### React 使用双缓存技术完成 Fiber 树的构建与替换，实现 DOM 对象的快速更新。
+#### 在 React 中最多会同时存在两颗 Fiber 树，当前在屏幕中显示的内容对应的 Fiber 树叫做 current Fiber 树，当发生更新时，React 会在内存中重现构建一颗新的 Fiber 树，这颗正在构建的 Fiber 树叫做 WorkInProgress Fiber 树。在双缓存技术中，workInProgress Fiber 树就是即将要显示在页面中的 Fiber 树，当这颗 Fiber 树构建完成后，React 会使用它直接替换 current Fiber 树达到快速更新 DOM 的目的，因为 workInProgress Fiber 树是在内存中构建的，所以构建的速度是非常快的。
+#### 一旦 workInProgress Fiber 树在屏幕上呈现，它就会变成 current Fiber 树
+
 React is a JavaScript library for building user interfaces.
 
 * **Declarative:** React makes it painless to create interactive UIs. Design simple views for each state in your application, and React will efficiently update and render just the right components when your data changes. Declarative views make your code more predictable, simpler to understand, and easier to debug.
