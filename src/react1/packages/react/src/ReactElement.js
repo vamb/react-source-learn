@@ -61,8 +61,11 @@ function defineKeyPropWarningGetter(props, displayName) {
   // 通过 props 对象获取 key 属性报错
   const warnAboutAccessingKey = function() {
     if (__DEV__) {
+      // specialPropKeyWarningShow 控制错误只输出一次的变量
       if (!specialPropKeyWarningShown) {
+        // 通过 specialPropKeyWarningShown 锁住判断条件
         specialPropKeyWarningShown = true;
+        // 指定报错信息和组件名称
         console.error(
           '%s: `key` is not a prop. Trying to access it will result ' +
             'in `undefined` being returned. If you need to access the same ' +
@@ -86,10 +89,14 @@ function defineKeyPropWarningGetter(props, displayName) {
  * displayName   组件名称标识
  */
 function defineRefPropWarningGetter(props, displayName) {
+  // 通过 props 对象获取 ref 属性报错
   const warnAboutAccessingRef = function() {
     if (__DEV__) {
+      // specialPropRefWarningShown 控制错误只输出一次的变量
       if (!specialPropRefWarningShown) {
+        // 通过 specialPropRefWarningShown 锁住判断条件
         specialPropRefWarningShown = true;
+        // 指定报错信息和组件名称
         console.error(
           '%s: `ref` is not a prop. Trying to access it will result ' +
             'in `undefined` being returned. If you need to access the same ' +
