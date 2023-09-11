@@ -136,9 +136,6 @@ export type Fiber = {|
   // alternate versions of the tree. We put this on a single object for now to
   // minimize the number of objects created during the initial render.
 
-  // Tag identifying the type of fiber.
-  tag: WorkTag,
-
   // Unique identifier of this child.
   key: null | string,
 
@@ -146,11 +143,19 @@ export type Fiber = {|
   // reconciliation of this child.
   elementType: any,
 
+  /******************************** DOM 实例相关 ****************************/
+  // Tag identifying the type of fiber.
+  // Tag 标记不同的组件类型
+  tag: WorkTag,
+
   // The resolved function/class/ associated with this fiber.
+  // 组件类型 div、span 组件构造函数
   type: any,
 
   // The local state associated with this fiber.
+  // 实例对象，如类组件的实例、原生 dom 实例，而 function 组件没有实例，因此该属性是空
   stateNode: any,
+  /******************************** DOM 实例相关 ****************************/
 
   // Conceptual aliases
   // parent : Instance -> return The parent happens to be the same as the
@@ -158,15 +163,31 @@ export type Fiber = {|
 
   // Remaining fields belong to Fiber
 
+  /*************************** 构建 Fiber 树相关 ****************************/
   // The Fiber to return to after finishing processing this one.
   // This is effectively the parent, but there can be multiple parents (two)
   // so this is only the parent of the thing we're currently processing.
   // It is conceptually the same as the return address of a stack frame.
+  // 指向自己的父级 Fiber 对象
   return: Fiber | null,
 
   // Singly Linked List Tree Structure.
+  // 指向自己的第一个子 Fiber 对象
   child: Fiber | null,
+
+  // 指向自己的下一个兄弟 Fiber 对象
   sibling: Fiber | null,
+
+  // This is a pooled version of a Fiber. Every fiber that gets updated will
+  // eventually have a pair. There are cases when we can clean up pairs to save
+  // memory if we need to.
+  // 在 Fiber 树更新的过程中，每个 Fiber 都会有一个跟其对应的 Fiber
+  // 我们称他为 current <===> workInProgress
+  // 在渲染完成之后他们会交换位置
+  // alternate 指向当前 Fiber 在 workInProgress 树中的对应 Fiber
+  alternate: Fiber | null,
+  /*************************** 构建 Fiber 树相关 ****************************/
+
   index: number,
 
   // The ref last used to attach this node.
@@ -177,14 +198,47 @@ export type Fiber = {|
     | RefObject,
 
   // Input is the data coming into process this fiber. Arguments. Props.
+
+  /*************************** 状态数据相关 ****************************/
+  // 即将更新的 props
   pendingProps: any, // This type will be more specific once we overload the tag.
+
+  // 旧的 props
   memoizedProps: any, // The props used to create the output.
 
+  // The state used to create the output
+  // 旧的 state
+  memoizedState: any,
+  /*************************** 状态数据相关 ****************************/
+
+
+  /*************************** 副作用相关 ****************************/
   // A queue of state updates and callbacks.
+  // 该 Fiber 对应的组件产生的状态更新会存放在这个队列里面
   updateQueue: UpdateQueue<any> | null,
 
-  // The state used to create the output
-  memoizedState: any,
+  // Effect
+  // 用来记录当前 Fiber 要执行的 DOM 操作
+  effectTag: SideEffectTag,
+
+  // The first and last fiber with side-effect within this subtree. This allows
+  // us to reuse a slice of the linked list when we reuse the work done within
+  // this fiber.
+  // 子树中第一个 side effect
+  firstEffect: Fiber | null,
+
+  // Singly linked list fast path to the next fiber with side-effects.
+  // 单链表用来快速查找下一个 side effect
+  nextEffect: Fiber | null,
+
+  // 子树中最后一个 side effect
+  lastEffect: Fiber | null,
+
+
+  // Represents a time in the future by which this work should be completed.
+  // Does not include work found in its subtree.
+  // 任务过期时间
+  expirationTime: ExpirationTime,
 
   // Dependencies (contexts, events) for this fiber, if it has any
   dependencies: Dependencies | null,
@@ -195,31 +249,20 @@ export type Fiber = {|
   // parent. Additional flags can be set at creation time, but after that the
   // value should remain unchanged throughout the fiber's lifetime, particularly
   // before its child fibers are created.
+  // 当前组件及子组件处于何种渲染模式 详见 TypeOfMode
   mode: TypeOfMode,
 
-  // Effect
-  effectTag: SideEffectTag,
+  // firstEffect -> nextEffect -> nextEffect -> ..... -> lastEffect
+  /*************************** 副作用相关 ****************************/
 
-  // Singly linked list fast path to the next fiber with side-effects.
-  nextEffect: Fiber | null,
 
-  // The first and last fiber with side-effect within this subtree. This allows
-  // us to reuse a slice of the linked list when we reuse the work done within
-  // this fiber.
-  firstEffect: Fiber | null,
-  lastEffect: Fiber | null,
 
-  // Represents a time in the future by which this work should be completed.
-  // Does not include work found in its subtree.
-  expirationTime: ExpirationTime,
+
+
+
 
   // This is used to quickly determine if a subtree has no pending changes.
   childExpirationTime: ExpirationTime,
-
-  // This is a pooled version of a Fiber. Every fiber that gets updated will
-  // eventually have a pair. There are cases when we can clean up pairs to save
-  // memory if we need to.
-  alternate: Fiber | null,
 
   // Time spent rendering this Fiber and its descendants for the current update.
   // This tells us how well the tree makes use of sCU for memoization.
