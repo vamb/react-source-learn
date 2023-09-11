@@ -5,7 +5,11 @@ import * as ReactDOM from "react-dom"
 import './index.css';
 import App from './App';
 
-ReactDOM.render(<App />, document.getElementById('root'));
+// ReactDOM.render(<div>hello</div>, document.getElementById('root'), function(){
+//   console.log('this', this)
+// });
+
+ReactDOM.render(<App />, document.getElementById('root'))
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

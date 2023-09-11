@@ -249,6 +249,7 @@ function legacyRenderSubtreeIntoContainer(
 
     // 获取 Fiber Root 对象
     fiberRoot = root._internalRoot;
+    console.log('ReactDOMLegacy fiberRoot', fiberRoot)
     /**
      * 改变 callback 函数中的 this 指向
      * 使其指向 render 方法第一个参数的真实 DOM 对象
@@ -264,7 +265,7 @@ function legacyRenderSubtreeIntoContainer(
         // rootFiber.child.stateNode
         // rootFiber 就是 id="root" 的 div
         const instance = getPublicRootInstance(fiberRoot);
-        // 调用 callback 函数并改变函数内部 this 指向
+        // 调用原始 callback 函数并改变函数内部 this 指向
         originalCallback.call(instance);
       };
     }

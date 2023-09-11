@@ -229,16 +229,32 @@ export function createContainer(
   return createFiberRoot(containerInfo, tag, hydrate, hydrationCallbacks);
 }
 
+/**
+ * 计算任务的过期时间
+ * 再根据任务过期时间创建 Update 任务
+ * 通过任务的过期时间还可以计算出任务的优先级
+ * @param element
+ * @param container
+ * @param parentComponent
+ * @param callback
+ * @returns {ExpirationTime}
+ */
 export function updateContainer(
+  // element 要渲染的 ReactElement
   element: ReactNodeList,
+  // container Fiber Root 对象
   container: OpaqueRoot,
+  // parentComponent 父组件 初始渲染为 null
   parentComponent: ?React$Component<any, any>,
+  // ReactElement 渲染完成执行的回调函数
   callback: ?Function,
 ): ExpirationTime {
   if (__DEV__) {
     onScheduleRoot(container, element);
   }
+  // container 获取 rootFiber
   const current = container.current;
+  // 获取当前距离 react 应用初始化的时间 1073741805
   const currentTime = requestCurrentTimeForUpdate();
   if (__DEV__) {
     // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
@@ -247,15 +263,26 @@ export function updateContainer(
       warnIfNotScopedWithMatchingAct(current);
     }
   }
+  // 异步加载设置
   const suspenseConfig = requestCurrentSuspenseConfig();
+
+  // 计算过期时间
+  // 为了防止任务因为优先级的原因一直被打断而未能执行
+  // react 会设置一个过期时间，当时间到了过期时间的时候
+  // 如果任务还未执行的话，react 将会强制执行该任务
+  // 初始化渲染时，任务同步执行不涉及被打断的问题
+  // 过期时间被设置成 1073741823，这个数值表示当前任务为同步任务
   const expirationTime = computeExpirationForFiber(
     currentTime,
     current,
     suspenseConfig,
   );
-
+  // 设置 FiberRoot.context，首次执行返回一个emptyContext，是一个{}
   const context = getContextForSubtree(parentComponent);
+  // 初始渲染时 Fiber Root 对象中的 context 属性值为 null
+  // 所以会进入到 if 中
   if (container.context === null) {
+    // 初始渲染时将 context 属性设置为 {}
     container.context = context;
   } else {
     container.pendingContext = context;
@@ -278,12 +305,17 @@ export function updateContainer(
     }
   }
 
+  // 创建一个待执行任务
   const update = createUpdate(expirationTime, suspenseConfig);
   // Caution: React DevTools currently depends on this property
   // being called "element".
+  // 将要更新的内容挂载到更新对象中的 payload 中
+  // 将要更新的组件存储在 payload 对象中，方便后期获取
   update.payload = {element};
 
+  // 判断 callback 是否存在
   callback = callback === undefined ? null : callback;
+  // 如果 callback 存在
   if (callback !== null) {
     if (__DEV__) {
       if (typeof callback !== 'function') {
@@ -294,12 +326,18 @@ export function updateContainer(
         );
       }
     }
+    // 将 callback 挂载到 update 对象中
+    // 其实就是一层层传递 方便 ReactElement 元素渲染完成调用
+    // 回调函数执行完成后会被清除 可以在代码的后面加上 return 进行验证
     update.callback = callback;
   }
 
+  // 将 update 对象加入到 Fiber 的更新队列当中（updateQueue）
+  // 待执行的任务都会被存储在 fiber.updateQueue.shared.pending 中
   enqueueUpdate(current, update);
+  // 调度和更新 current 对象
   scheduleWork(current, expirationTime);
-
+  // 返回过期时间
   return expirationTime;
 }
 
@@ -317,17 +355,28 @@ export {
   IsThisRendererActing,
 };
 
+/**
+ * 获取 container 的第一个子元素的实例对象
+ */
 export function getPublicRootInstance(
+  // FiberRoot
   container: OpaqueRoot,
 ): React$Component<any, any> | PublicInstance | null {
+  // 获取 rootFiber
   const containerFiber = container.current;
+  // 如果 rootFiber 没有子元素
+  // 指的就是 id="root" 的 div 没有子元素
   if (!containerFiber.child) {
+    // 返回 null
     return null;
   }
+  // 匹配子元素类型
   switch (containerFiber.child.tag) {
     case HostComponent:
+      // 普通
       return getPublicInstance(containerFiber.child.stateNode);
     default:
+      // 返回子元素的真实 DOM 对象
       return containerFiber.child.stateNode;
   }
 }

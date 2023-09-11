@@ -202,22 +202,32 @@ export function createUpdate(
   return update;
 }
 
+// 将任务（Update）存放于任务队列（updateQueue）中
+// 创建单向链表结构存放 update，next 用来串联 update
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
+  // 获取当前 Fiber 的 更新队列
   const updateQueue = fiber.updateQueue;
+  // 如果更新队列不存在 就返回 null
   if (updateQueue === null) {
     // Only occurs if the fiber has been unmounted.
+    // 仅发生在 fiber 已经被卸载
     return;
   }
-
+  // 获取待执行的 Update 任务
+  // 初始渲染时没有待执行的任务
   const sharedQueue = updateQueue.shared;
   const pending = sharedQueue.pending;
+
+  // 如果没有待执行的 Update 任务
   if (pending === null) {
     // This is the first update. Create a circular list.
+    // 这是第一次更新，创建一个循环列表
     update.next = update;
   } else {
     update.next = pending.next;
     pending.next = update;
   }
+  // 将 Update 任务存储在 pending 属性中
   sharedQueue.pending = update;
 
   if (__DEV__) {
