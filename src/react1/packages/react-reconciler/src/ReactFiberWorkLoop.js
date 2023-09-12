@@ -1550,28 +1550,47 @@ function workLoopConcurrent() {
   }
 }
 
+// 构建 Fiber 对象
 function performUnitOfWork(unitOfWork: Fiber): Fiber | null {
   // The current, flushed, state of this fiber is the alternate. Ideally
   // nothing should rely on this, but relying on it here means that we don't
   // need an additional field on the work in progress.
+
+  // unitOfWork => workInProgress Fiber 树中的 rootFiber
+  // current => currentFiber 树中的 rootFiber
   const current = unitOfWork.alternate;
 
   startWorkTimer(unitOfWork);
+
+  // 开发环境执行 忽略
   setCurrentDebugFiberInDEV(unitOfWork);
 
+  // 存储下一个要构建的自己 Fiber 对象
   let next;
+  // 初始渲染 不执行
+  // false
   if (enableProfilerTimer && (unitOfWork.mode & ProfileMode) !== NoMode) {
     startProfilerTimer(unitOfWork);
     next = beginWork(current, unitOfWork, renderExpirationTime);
     stopProfilerTimerIfRunningAndRecordDelta(unitOfWork, true);
   } else {
+    // beginWork：从父到子，构建 Fiber 节点对象
+    // 返回 next 为当前节点的子节点
     next = beginWork(current, unitOfWork, renderExpirationTime);
   }
 
+  // 开发环境执行 忽略
   resetCurrentDebugFiberInDEV();
+
+  // 为旧的 props 属性赋值
+  // 此次更新后 pendingProps 变为 memoizedProps
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
+
+  // 如果子节点不存在 说明当前节点 向下遍历子节点已经到底了
+  // 继续向上返回 遇到兄弟节点 构建兄弟节点的子 Fiber 对象，直到返回到根 Fiber 对象
   if (next === null) {
     // If this doesn't spawn new work, complete the current work.
+    // 从子到父，构建其余节点 Fiber 对象
     next = completeUnitOfWork(unitOfWork);
   }
 
