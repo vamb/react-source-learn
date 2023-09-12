@@ -376,39 +376,68 @@ export function computeExpirationForFiber(
   return expirationTime;
 }
 
+/**
+ * 判断任务是否为同步，如果是则调用同步任务入口
+ * @param fiber
+ * @param expirationTime
+ */
 export function scheduleUpdateOnFiber(
   fiber: Fiber,
   expirationTime: ExpirationTime,
 ) {
+  /**
+   * fiber: 初始化渲染时为 rootFiber, 即 <div id="root"></div> 对应的 Fiber 对象
+   * expirationTime: 任务过期时间 => 1073741823
+   */
+  /**
+   * 判断是否是无限循环的 update 如果是就报错
+   * 在 componentWillUpdate 或者 componentDidUpdate 生命周期函数中重复调用
+   * setState 方法时, 可能会发生这种情况, React 限制了嵌套更新的数量以防止无限循环
+   * 限制的嵌套更新数量为 50, 可通过 NESTED_UPDATE_LIMIT 全局变量获取
+   */
   checkForNestedUpdates();
+  // 开发环境下执行的代码 忽略
   warnAboutRenderPhaseUpdatesInDEV(fiber);
-
+  // 遍历更新子节点的过期时间 返回 FiberRoot
   const root = markUpdateTimeFromFiberToRoot(fiber, expirationTime);
   if (root === null) {
+    // 开发环境下执行的代码 忽略
     warnAboutUpdateOnUnmountedFiberInDEV(fiber);
     return;
   }
 
+  // 判断是否有高优先级任务打断当前正在执行的任务
+  // 内部判断条件不成立 内部代码没有得到执行
   checkForInterruption(fiber, expirationTime);
+
+  // 报告调度更新，测试环境执行，忽略
   recordScheduleUpdate();
 
   // TODO: computeExpirationForFiber also reads the priority. Pass the
   // priority as an argument to that function and this one.
+  // 获取当前调度任务的优先级 数值类型 从90开始，到99 数值越大 优先级越高
+  // 97 -> 普通优先级任务
   const priorityLevel = getCurrentPriorityLevel();
 
+  // 判断任务是否是同步任务 Sync的值为: 1073741823
   if (expirationTime === Sync) {
     if (
       // Check if we're inside unbatchedUpdates
+      // 检查是否处于非批量更新模式
       (executionContext & LegacyUnbatchedContext) !== NoContext &&
       // Check if we're not already rendering
+      // 检查是否没有处于正在进行渲染的任务
       (executionContext & (RenderContext | CommitContext)) === NoContext
     ) {
       // Register pending interactions on the root to avoid losing traced interaction data.
+      // 在跟上注册待处理的交互，以避免丢失跟踪的交互数据
+      // 初始渲染时内部条件判断不成立，内部代码没有得到执行
       schedulePendingInteractions(root, expirationTime);
 
       // This is a legacy edge case. The initial mount of a ReactDOM.render-ed
       // root inside of batchedUpdates should be synchronous, but layout updates
       // should be deferred until the end of the batch.
+      // 同步任务入口点
       performSyncWorkOnRoot(root);
     } else {
       ensureRootIsScheduled(root);
@@ -987,9 +1016,18 @@ function finishConcurrentRender(
 
 // This is the entry point for synchronous tasks that don't go
 // through Scheduler
+// 进入 render 阶段, 构建 workInProgress Fiber 树
 function performSyncWorkOnRoot(root) {
   // Check if there's expired work on this root. Otherwise, render at Sync.
+  // 参数 root 为 fiberRoot 对象
+  // 检查是否有过期的任务
+  // 如果没有过期的任务 值为 0
+  // 初始化渲染没有过期的任务待执行
   const lastExpiredTime = root.lastExpiredTime;
+
+  // NoWork 值为 0
+  // 如果有过期的任务 将过期时间设置为 lastExpiredTime 否则将过期时间设置为 Sync
+  // 初始渲染过期时间被设置成了 Sync
   const expirationTime = lastExpiredTime !== NoWork ? lastExpiredTime : Sync;
   invariant(
     (executionContext & (RenderContext | CommitContext)) === NoContext,
@@ -1000,13 +1038,21 @@ function performSyncWorkOnRoot(root) {
 
   // If the root or expiration time have changed, throw out the existing stack
   // and prepare a fresh one. Otherwise we'll continue where we left off.
+  // 如果 root 和 workInProgressRoot 不相等
+  // 说明 workInProgressRoot 不存在, 说明还没有构建 workInProgress Fiber 树
+  // workInProgressRoot 为全局变量 默认值为 null, 初始渲染时值为 null
+  // expirationTime => 1073741823
+  // renderExpirationTime => 0
+  // true
   if (root !== workInProgressRoot || expirationTime !== renderExpirationTime) {
+    // 构建 workInProgressFiber 树及rootFiber
     prepareFreshStack(root, expirationTime);
     startWorkOnPendingInteractions(root, expirationTime);
   }
 
   // If we have a work-in-progress fiber, it means there's still work to do
   // in this root.
+  // workInProgress 如果不为 null
   if (workInProgress !== null) {
     const prevExecutionContext = executionContext;
     executionContext |= RenderContext;
@@ -1016,7 +1062,9 @@ function performSyncWorkOnRoot(root) {
 
     do {
       try {
+        // 以同步的方式开始构建 Fiber 对象
         workLoopSync();
+        // 跳出 while 循环
         break;
       } catch (thrownValue) {
         handleError(root, thrownValue);
@@ -1039,6 +1087,8 @@ function performSyncWorkOnRoot(root) {
     }
 
     if (workInProgress !== null) {
+      // 这是一个同步渲染, 所以我们应该完成整棵树.
+      // 无法提交不完整的 root, 此错误可能是由于React中的错误所致. 请提出问题.
       // This is a sync render, so we should have finished the whole tree.
       invariant(
         false,
@@ -1049,8 +1099,14 @@ function performSyncWorkOnRoot(root) {
       // We now have a consistent tree. Because this is a sync render, we
       // will commit it even if something suspended.
       stopFinishedWorkLoopTimer();
+
+      // 将构建好的新 Fiber 对象存储在 finishedWork 属性中
+      // 提交阶段使用
       root.finishedWork = (root.current.alternate: any);
       root.finishedExpirationTime = expirationTime;
+
+      // 结束 render 阶段
+      // 进入 commit 阶段
       finishSyncRender(root);
     }
 
