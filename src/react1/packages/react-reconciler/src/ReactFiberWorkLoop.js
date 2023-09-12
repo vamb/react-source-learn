@@ -1534,6 +1534,9 @@ function inferTimeFromExpirationTimeWithSuspenseConfig(
 /** @noinline */
 function workLoopSync() {
   // Already timed out, so perform work without checking if we need to yield.
+  // workInProgress 是一个 fibre 对象
+  // 它的值不为 null 意味着该 fiber 对象上仍然有更新需要执行
+  // while 方法支撑 render 阶段 所有 fiber 节点的构建
   while (workInProgress !== null) {
     workInProgress = performUnitOfWork(workInProgress);
   }
