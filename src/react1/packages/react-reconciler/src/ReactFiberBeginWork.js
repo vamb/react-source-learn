@@ -209,17 +209,29 @@ if (__DEV__) {
   didWarnAboutDefaultPropsOnFunctionComponent = {};
 }
 
+// 构建子级 Fiber 对象
 export function reconcileChildren(
+  // 旧 Fiber
   current: Fiber | null,
+  // 父级 Fiber
   workInProgress: Fiber,
+  // 子集 vdom 对象
   nextChildren: any,
+  // 初始渲染 整形最大值 代表同步任务
   renderExpirationTime: ExpirationTime,
 ) {
+  /**
+   * 为什么传递 current ？
+   * 如果不是初始渲染的情况，要进行新旧 Fiber 对比
+   * 初始渲染时则用不到 current
+   */
+  // 如果 Fiber 为 null 则表示当前为初始渲染
   if (current === null) {
     // If this is a fresh new component that hasn't been rendered yet, we
     // won't update its child set by applying minimal side-effects. Instead,
     // we will add them all to the child before it gets rendered. That means
     // we can optimize this reconciliation pass by not tracking side-effects.
+    // 为当前构建的 Fiber 对象添加子级 Fiber 对象
     workInProgress.child = mountChildFibers(
       workInProgress,
       null,
