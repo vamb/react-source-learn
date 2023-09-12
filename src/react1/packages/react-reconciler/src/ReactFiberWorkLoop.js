@@ -1016,10 +1016,11 @@ function finishConcurrentRender(
 
 // This is the entry point for synchronous tasks that don't go
 // through Scheduler
-// 进入 render 阶段, 构建 workInProgress Fiber 树
+// 进入 render 阶段, 在 workInProgress 中构建 Fiber 树
 function performSyncWorkOnRoot(root) {
   // Check if there's expired work on this root. Otherwise, render at Sync.
-  // 参数 root 为 fiberRoot 对象
+  // 参数 root 为 current fiberRoot 对象
+
   // 检查是否有过期的任务
   // 如果没有过期的任务 值为 0
   // 初始化渲染没有过期的任务待执行
@@ -1034,6 +1035,7 @@ function performSyncWorkOnRoot(root) {
     'Should not already be working.',
   );
 
+  // 处理 useEffect
   flushPassiveEffects();
 
   // If the root or expiration time have changed, throw out the existing stack
@@ -1045,8 +1047,9 @@ function performSyncWorkOnRoot(root) {
   // renderExpirationTime => 0
   // true
   if (root !== workInProgressRoot || expirationTime !== renderExpirationTime) {
-    // 构建 workInProgressFiber 树及rootFiber
+    // 构建 workInProgress Fiber 树及 rootFiber
     prepareFreshStack(root, expirationTime);
+    // 初始渲染不执行 内部条件判断不成立
     startWorkOnPendingInteractions(root, expirationTime);
   }
 
@@ -1077,6 +1080,7 @@ function performSyncWorkOnRoot(root) {
       popInteractions(((prevInteractions: any): Set<Interaction>));
     }
 
+    // 初始渲染 不执行
     if (workInProgressRootExitStatus === RootFatalErrored) {
       const fatalError = workInProgressRootFatalError;
       stopInterruptedWorkLoopTimer();
@@ -1288,11 +1292,21 @@ export function flushControlled(fn: () => mixed): void {
   }
 }
 
+/**
+ * 构建 workInProgress Fiber 树及 rootFiber
+ * @param root
+ * @param expirationTime
+ */
 function prepareFreshStack(root, expirationTime) {
+  // 为 FiberRoot 对象添加 finishedWork 属性
+  // finishedWork 表示 render 阶段执行完成构建的待提交的 Fiber 对象
   root.finishedWork = null;
+  // 初始化 finishedExpirationTime 值为 0
   root.finishedExpirationTime = NoWork;
 
   const timeoutHandle = root.timeoutHandle;
+
+  // 初始化渲染不执行 timeoutHandle => -1， noTimeout => -1
   if (timeoutHandle !== noTimeout) {
     // The root previous suspended and scheduled a timeout to commit a fallback
     // state. Now that we have additional work, cancel the timeout.
@@ -1301,6 +1315,8 @@ function prepareFreshStack(root, expirationTime) {
     cancelTimeout(timeoutHandle);
   }
 
+  // 初始化渲染不执行 workInProgress 全局变量 初始化为 null
+  // false
   if (workInProgress !== null) {
     let interruptedWork = workInProgress.return;
     while (interruptedWork !== null) {
@@ -1308,7 +1324,10 @@ function prepareFreshStack(root, expirationTime) {
       interruptedWork = interruptedWork.return;
     }
   }
+
+  // 构建 workInProgress Fiber 树的 fiberRoot 对象
   workInProgressRoot = root;
+  // 构建 workInProgress Fiber 树的 rootFiber
   workInProgress = createWorkInProgress(root.current, null);
   renderExpirationTime = expirationTime;
   workInProgressRootExitStatus = RootIncomplete;
@@ -1319,6 +1338,7 @@ function prepareFreshStack(root, expirationTime) {
   workInProgressRootNextUnprocessedUpdateTime = NoWork;
   workInProgressRootHasPendingPing = false;
 
+  // true
   if (enableSchedulerTracing) {
     spawnedWorkDuringRender = null;
   }
