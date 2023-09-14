@@ -149,7 +149,7 @@ let updateHostComponent;
 let updateHostText;
 if (supportsMutation) {
   // Mutation mode
-
+  // 将所有子级追加到父级中
   appendAllChildren = function(
     parent: Instance,
     workInProgress: Fiber,
@@ -158,9 +158,16 @@ if (supportsMutation) {
   ) {
     // We only have the top Fiber that was created but we need recurse down its
     // children to find all the terminal nodes.
+    // 获取子级
     let node = workInProgress.child;
+
+    // 如果子级不为空 执行循环
     while (node !== null) {
+
+      // 如果 node 是普通 ReactElement 或者为文本
       if (node.tag === HostComponent || node.tag === HostText) {
+
+        // 将子级追加到父级中
         appendInitialChild(parent, node.stateNode);
       } else if (enableFundamentalAPI && node.tag === FundamentalComponent) {
         appendInitialChild(parent, node.stateNode.instance);
@@ -169,20 +176,36 @@ if (supportsMutation) {
         // down its children. Instead, we'll get insertions from each child in
         // the portal directly.
       } else if (node.child !== null) {
+
+        // 如果 node 不是普通 ReactElement 又不是文本
+        // 将 node 视为组件, 组件本身不能转换为真实 DOM 元素
+        // 获取到组件的第一个子元素, 继续执行循环
         node.child.return = node;
         node = node.child;
         continue;
       }
+
+      // 如果 node 和 workInProgress 是同一个节点
+      // 说明 node 已经退回到父级 终止循环
+      // 说明此时所有子级都已经追加到父级中了
       if (node === workInProgress) {
         return;
       }
+
+      // 处理子级节点的兄弟节点
       while (node.sibling === null) {
+
+        // 如果节点没有父级或者节点的父级是自己, 退出循环
+        // 说明此时所有子级都已经追加到父级中了
         if (node.return === null || node.return === workInProgress) {
           return;
         }
+        // 更新 node
         node = node.return;
       }
+      // 更新父级 方便回退
       node.sibling.return = node.return;
+      // 将 node 更新为下一个兄弟节点
       node = node.sibling;
     }
   };
@@ -638,12 +661,14 @@ function completeWork(
   workInProgress: Fiber,
   renderExpirationTime: ExpirationTime,
 ): Fiber | null {
+  // 获取待更新 props
   const newProps = workInProgress.pendingProps;
 
   switch (workInProgress.tag) {
     case IndeterminateComponent:
     case LazyComponent:
     case SimpleMemoComponent:
+    // 0
     case FunctionComponent:
     case ForwardRef:
     case Fragment:
@@ -659,6 +684,7 @@ function completeWork(
       }
       return null;
     }
+    // 3
     case HostRoot: {
       popHostContainer(workInProgress);
       popTopLevelLegacyContextObject(workInProgress);
@@ -680,10 +706,17 @@ function completeWork(
       updateHostContainer(workInProgress);
       return null;
     }
+    // 5 - 普通的 react 元素
     case HostComponent: {
       popHostContext(workInProgress);
+
+      // 获取 rootDOM 节点 <div id="root"></div>
       const rootContainerInstance = getRootHostContainer();
+
+      // 节点的具体类型 div span ...
       const type = workInProgress.type;
+
+      // 初始渲染不执行 current = null
       if (current !== null && workInProgress.stateNode != null) {
         updateHostComponent(
           current,
@@ -721,6 +754,9 @@ function completeWork(
         // or completeWork depending on whether we want to add them top->down or
         // bottom->up. Top->down is faster in IE11.
         let wasHydrated = popHydrationState(workInProgress);
+
+        // 服务器渲染相关 初始渲染不执行
+        // false
         if (wasHydrated) {
           // TODO: Move this and createInstance step into the beginPhase
           // to consolidate.
@@ -746,6 +782,7 @@ function completeWork(
             }
           }
         } else {
+          // 创建节点实例对象 <div id="root"></div>
           let instance = createInstance(
             type,
             newProps,
@@ -753,12 +790,19 @@ function completeWork(
             currentHostContext,
             workInProgress,
           );
-
+          /**
+           * 将所有的子级追加到父级中
+           * instance 为父级
+           * workInProgress.child 为子级
+           */
           appendAllChildren(instance, workInProgress, false, false);
 
           // This needs to be set before we mount Flare event listeners
+          // 为 Fiber 对象添加 stateNode 属性
           workInProgress.stateNode = instance;
 
+          // 初始渲染不执行
+          // false
           if (enableDeprecatedFlareAPI) {
             const listeners = newProps.DEPRECATED_flareListeners;
             if (listeners != null) {
@@ -786,6 +830,7 @@ function completeWork(
           }
         }
 
+        // 处理 ref DOM 引用
         if (workInProgress.ref !== null) {
           // If there is a ref on a host node we need to schedule a callback
           markRef(workInProgress);

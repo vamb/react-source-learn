@@ -1598,29 +1598,55 @@ function performUnitOfWork(unitOfWork: Fiber): Fiber | null {
   return next;
 }
 
+/**
+ * 1. 创建 Fiber 对象
+ * 2. 创建每一个节点的真实 DOM 对象并将其添加到 stateNode
+ * 3. 收集要执行 DOM 操作的 Fiber 节点，组建 effect 链表结构
+ */
 function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
   // Attempt to complete the current unit of work, then move to the next
   // sibling. If there are no more siblings, return to the parent fiber.
+  // 为 workInProgress 全局变量重新赋值
   workInProgress = unitOfWork;
+
   do {
     // The current, flushed, state of this fiber is the alternate. Ideally
     // nothing should rely on this, but relying on it here means that we don't
     // need an additional field on the work in progress.
+    // 获取备份节点
+    // 初始化渲染 非根 Fiber 对象没有备份节点 所以 current 为 null
     const current = workInProgress.alternate;
+
+    // 父级 Fiber 对象, 非根 Fiber 对象都有父级
     const returnFiber = workInProgress.return;
 
     // Check if the work completed or if something threw.
+    // 判断传入的 Fiber 对象是否构建完成, 任务调度相关
+    // & 是表示位的与运算, 把左右两边的数字转化为二进制
+    // 然后每一位分别进行比较, 如果相等就为1, 不相等即为0
+    // 此处应用"位与"运算符的目的是"清零"
+    // true
     if ((workInProgress.effectTag & Incomplete) === NoEffect) {
+      // 开发环境代码 忽略
       setCurrentDebugFiberInDEV(workInProgress);
       let next;
+
+      // 如果不能使用分析器的 timer, 直接执行 completeWork
+      // enableProfilerTimer => true
+      // 但此处无论条件是否成立都会执行 completeWork
       if (
         !enableProfilerTimer ||
         (workInProgress.mode & ProfileMode) === NoMode
       ) {
+        // 重点代码(二)
+        // 创建节点真实 DOM 对象并将其添加到 stateNode 属性中
         next = completeWork(current, workInProgress, renderExpirationTime);
       } else {
         startProfilerTimer(workInProgress);
+
+        // 创建节点真实 DOM 对象并将其添加到 stateNode 属性中
         next = completeWork(current, workInProgress, renderExpirationTime);
+
         // Update render duration assuming we didn't error.
         stopProfilerTimerIfRunningAndRecordDelta(workInProgress, false);
       }
@@ -1628,26 +1654,41 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
       resetCurrentDebugFiberInDEV();
       resetChildExpirationTime(workInProgress);
 
+      // 重点代码(一)
+      // 如果子级存在
       if (next !== null) {
         // Completing this fiber spawned new work. Work on that next.
+        // 返回子级 一直返回到 workLoopSync
+        // 再重新执行 performUnitOfWork 构建子级 Fiber 节点对象
         return next;
       }
 
+      // 构建 effect 链表结构
+      // 如果不是根 Fiber 就是 true 否则就是 false
+      // 将子树和此 Fiber 的所有 effect 附加到父级的 effect 列表中
       if (
+        // 如果父 Fiber 存在 并且
         returnFiber !== null &&
+
         // Do not append effects to parents if a sibling failed to complete
+        // 父 Fiber 对象中的 effectTag 为 0
         (returnFiber.effectTag & Incomplete) === NoEffect
       ) {
         // Append all the effects of the subtree and this fiber onto the effect
         // list of the parent. The completion order of the children affects the
         // side-effect order.
+        // 将子树和此 Fiber 的所有副作用附加到父级的 effect 列表上
+        // 以下两个判断的作用是搜集子 Fiber的 effect 到父 Fiber
         if (returnFiber.firstEffect === null) {
+          // first
           returnFiber.firstEffect = workInProgress.firstEffect;
         }
         if (workInProgress.lastEffect !== null) {
           if (returnFiber.lastEffect !== null) {
+            // next
             returnFiber.lastEffect.nextEffect = workInProgress.firstEffect;
           }
+          // last
           returnFiber.lastEffect = workInProgress.lastEffect;
         }
 
@@ -1657,17 +1698,28 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
         // schedule our own side-effect on our own list because if end up
         // reusing children we'll schedule this effect onto itself since we're
         // at the end.
+        // 获取副作用标记
+        // 初始渲染时除[根组件]以外的 Fiber, effectTag 值都为 0, 即不需要执行任何真实DOM操作
+        // 根组件的 effectTag 值为 3, 即需要将此节点对应的真实DOM对象添加到页面中
         const effectTag = workInProgress.effectTag;
 
         // Skip both NoWork and PerformedWork tags when creating the effect
         // list. PerformedWork effect is read by React DevTools but shouldn't be
         // committed.
+        // 创建 effect 列表时跳过 NoWork(0) 和 PerformedWork(1) 标记
+        // PerformedWork 由 React DevTools 读取, 不提交
+        // 初始渲染时 只有遍历到了根组件 判断条件才能成立, 将 effect 链表添加到 rootFiber
+        // 初始渲染 FiberRoot 对象中的 firstEffect 和 lastEffect 都是 App 组件
+        // 因为当所有节点在内存中构建完成后, 只需要一次将所有 DOM 添加到页面中
         if (effectTag > PerformedWork) {
+          // false
           if (returnFiber.lastEffect !== null) {
             returnFiber.lastEffect.nextEffect = workInProgress;
           } else {
+            // 为 fiberRoot 添加 firstEffect
             returnFiber.firstEffect = workInProgress;
           }
+          // 为 fiberRoot 添加 lastEffect
           returnFiber.lastEffect = workInProgress;
         }
       }
@@ -1675,6 +1727,7 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
       // This fiber did not complete because something threw. Pop values off
       // the stack without entering the complete phase. If this is a boundary,
       // capture values if possible.
+      // 忽略了初始渲染不执行的代码
       const next = unwindWork(workInProgress, renderExpirationTime);
 
       // Because this fiber did not complete, don't reset its expiration time.
@@ -1716,16 +1769,24 @@ function completeUnitOfWork(unitOfWork: Fiber): Fiber | null {
       }
     }
 
+    // 获取下一个同级 Fiber 对象
     const siblingFiber = workInProgress.sibling;
+
+    // 如果下一个同级 Fiber 对象存在
     if (siblingFiber !== null) {
       // If there is more work to do in this returnFiber, do that next.
+      // 返回下一个同级 Fiber 对象
       return siblingFiber;
     }
+
     // Otherwise, return to the parent
+    // 否则退回父级
     workInProgress = returnFiber;
   } while (workInProgress !== null);
 
   // We've reached the root.
+  // 当执行到这里的时候, 说明遍历到了 root 节点, 已完成遍历
+  // 更新 workInProgressRootExitStatus 的状态为 已完成
   if (workInProgressRootExitStatus === RootIncomplete) {
     workInProgressRootExitStatus = RootCompleted;
   }

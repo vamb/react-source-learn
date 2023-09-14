@@ -1013,22 +1013,29 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
 
   // 获取新的 props 对象 null
   const nextProps = workInProgress.pendingProps;
+
   // 获取上一次渲染使用的 state null
   const prevState = workInProgress.memoizedState;
+
   // 获取上一次渲染使用的 children null
   const prevChildren = prevState !== null ? prevState.element : null;
+
   // 浅复制更新队列，防止引用属性互相影响
   // workInProgress.updateQueue 浅拷贝 current.updateQueue
   cloneUpdateQueue(current, workInProgress);
+
   // 获取 updateQueue.payload 并赋值到 workInProgress.memoizedState
   // 要更新的内容就是 element 就是 rootFiber 的子元素
   processUpdateQueue(workInProgress, nextProps, null, renderExpirationTime);
+
   // 获取 element 所在对象
   const nextState = workInProgress.memoizedState;
+
   // Caution: React DevTools currently depends on this property
   // being called "element".
   // 从对象中 获取 element
   const nextChildren = nextState.element;
+
   console.log('ReactFiberBeginWork nextChildren', nextChildren)
 
   // 在计算 state 后如果前后两个 children 相同
@@ -1048,6 +1055,7 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
 
   // 获取 fiberRoot 对象
   const root: FiberRoot = workInProgress.stateNode;
+
   // 服务端渲染走 if
   if (root.hydrate && enterHydrationState(workInProgress)) {
     // If we don't have any current children this might be the first pass.
@@ -1064,6 +1072,7 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
     workInProgress.child = child;
 
     let node = child;
+
     while (node) {
       // Mark each child as hydrating. This is a fast path to know whether this
       // tree is part of a hydrating tree. This is used to determine if a child
