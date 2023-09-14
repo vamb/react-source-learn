@@ -252,13 +252,21 @@ function commitBeforeMutationLifeCycles(
     case Block: {
       return;
     }
+    // 如果该 fiber 类型是 ClassComponent
     case ClassComponent: {
       if (finishedWork.effectTag & Snapshot) {
         if (current !== null) {
+
+          // 旧的 props
           const prevProps = current.memoizedProps;
+
+          // 旧的 state
           const prevState = current.memoizedState;
           startPhaseTimer(finishedWork, 'getSnapshotBeforeUpdate');
+
+          // 获取 classComponent 组件的实例对象
           const instance = finishedWork.stateNode;
+
           // We could update instance props and state here,
           // but instead we rely on them being set during last render.
           // TODO: revisit this when we implement resuming.
@@ -289,6 +297,10 @@ function commitBeforeMutationLifeCycles(
               }
             }
           }
+
+          // 执行 getSnapshotBeforeUpdate 生命周期函数
+          // 在组件更新前捕获一些 DOM 信息
+          // 返回自定义的值或 null, 统称为 snapshot
           const snapshot = instance.getSnapshotBeforeUpdate(
             finishedWork.elementType === finishedWork.type
               ? prevProps
@@ -306,6 +318,8 @@ function commitBeforeMutationLifeCycles(
               );
             }
           }
+
+          // 将 snapshot 赋值到 __reactInternalSnapshotBeforeUpdate 属性（快照）
           instance.__reactInternalSnapshotBeforeUpdate = snapshot;
           stopPhaseTimer();
         }

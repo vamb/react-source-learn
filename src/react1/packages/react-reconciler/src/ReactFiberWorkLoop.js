@@ -2245,18 +2245,46 @@ function commitRootImpl(root, renderPriorityLevel) {
   return null;
 }
 
+// commit 阶段的第一个子阶段
+// 调用类组件的 getSnapshotBeforeUpdate 生命周期函数
 function commitBeforeMutationEffects() {
+
+  // 循环 effect 链
   while (nextEffect !== null) {
+
+    // nextEffect 是 effect 链上从 firstEffect 到 lastEffec 的每一个需要commit的 fiber 对象
+    // 初始化渲染第一个 nextEffect 为 App 组件
+    // effectTag => 3
     const effectTag = nextEffect.effectTag;
+
+    // console.log(effectTag);
+    // nextEffect = null;
+    // return;
+
+    // 如果 fiber 对象中里有 Snapshot 这个 effectTag 的话
+    // Snapshot 和更新有关系 初始化渲染 不执行
+    // false
     if ((effectTag & Snapshot) !== NoEffect) {
+
+      // 开发环境执行 忽略
       setCurrentDebugFiberInDEV(nextEffect);
+      // 计 effect 的数
       recordEffect();
 
+      // 获取当前 fiber 节点
       const current = nextEffect.alternate;
+
+      // 当 nextEffect 上有 Snapshot 这个 effectTag 时
+      // 执行以下方法, 主要是类组件调用 getSnapshotBeforeUpdate 生命周期函数
       commitBeforeMutationEffectOnFiber(current, nextEffect);
 
+      // 开发环境执行 忽略
       resetCurrentDebugFiberInDEV();
     }
+
+    // 调度 useEffect
+    // 初始化渲染 目前没有 不执行
+    // false
     if ((effectTag & Passive) !== NoEffect) {
       // If there are passive effects, schedule a callback to flush at
       // the earliest opportunity.
@@ -2268,6 +2296,7 @@ function commitBeforeMutationEffects() {
         });
       }
     }
+    // 更新循环条件
     nextEffect = nextEffect.nextEffect;
   }
 }
