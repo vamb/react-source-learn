@@ -1934,6 +1934,7 @@ function commitRootImpl(root, renderPriorityLevel) {
 
   // commitRoot 是最后阶段，不会再被异步调用了
   // 所以清除 callback 相关属性
+  // 重置默认值
   root.callbackNode = null;
   root.callbackExpirationTime = NoWork;
   root.callbackPriority = NoPriority;
@@ -2017,6 +2018,7 @@ function commitRootImpl(root, renderPriorityLevel) {
     nextEffect = firstEffect;
 
     // commit 第一个子阶段
+    // before mutation 阶段（执行 DOM 操作前）
     // 处理类组件的 getSnapShotBeforeUpdate 生命周期函数
     do {
       if (__DEV__) {
@@ -2029,7 +2031,7 @@ function commitRootImpl(root, renderPriorityLevel) {
         }
       } else {
         try {
-          commitBeforeMutationEffects();
+          commitBeforeMutationEffects(); // 关键方法
         } catch (error) {
           invariant(nextEffect !== null, 'Should be working on an effect.');
           captureCommitPhaseError(nextEffect, error);
@@ -2049,6 +2051,7 @@ function commitRootImpl(root, renderPriorityLevel) {
     startCommitHostEffectsTimer();
 
     // commit 第二个子阶段
+    // mutation 阶段（执行 DOM 操作）
     nextEffect = firstEffect;
     do {
       if (__DEV__) {
@@ -2067,7 +2070,7 @@ function commitRootImpl(root, renderPriorityLevel) {
         }
       } else {
         try {
-          commitMutationEffects(root, renderPriorityLevel);
+          commitMutationEffects(root, renderPriorityLevel); // 关键方法
         } catch (error) {
           invariant(nextEffect !== null, 'Should be working on an effect.');
           captureCommitPhaseError(nextEffect, error);
@@ -2090,6 +2093,7 @@ function commitRootImpl(root, renderPriorityLevel) {
     startCommitLifeCyclesTimer();
 
     // commit 第三个子阶段
+    // layout 阶段（执行 DOM 操作后）
     nextEffect = firstEffect;
     do {
       if (__DEV__) {
@@ -2108,7 +2112,7 @@ function commitRootImpl(root, renderPriorityLevel) {
         }
       } else {
         try {
-          commitLayoutEffects(root, expirationTime);
+          commitLayoutEffects(root, expirationTime); // 关键方法
         } catch (error) {
           invariant(nextEffect !== null, 'Should be working on an effect.');
           captureCommitPhaseError(nextEffect, error);
