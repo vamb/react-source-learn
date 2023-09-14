@@ -382,7 +382,8 @@ function commitHookEffectListMount(tag: number, finishedWork: Fiber) {
     // 通过遍历的方式调用 useEffect 中的回调函数
     // 在组件中定义了调用了几次 useEffect 遍历就会执行几次
     do {
-      if ((effect.tag & tag) === tag) {
+      if ((effect.tag & tag) === tag) { // 在函数组件中调用了 hook 函数就会进入 if
+        console.log('ReactFiberCommitWork effect', effect)
         // Mount
         const create = effect.create;
 
@@ -424,6 +425,8 @@ function commitHookEffectListMount(tag: number, finishedWork: Fiber) {
           }
         }
       }
+
+      // 更新循环条件
       effect = effect.next;
     } while (effect !== firstEffect);
   }
