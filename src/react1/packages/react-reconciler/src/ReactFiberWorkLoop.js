@@ -2414,19 +2414,28 @@ function commitMutationEffects(root: FiberRoot, renderPriorityLevel) {
   }
 }
 
+// commit 阶段的第三个子阶段
 function commitLayoutEffects(
   root: FiberRoot,
   committedExpirationTime: ExpirationTime,
 ) {
   // TODO: Should probably move the bulk of this function to commitWork.
   while (nextEffect !== null) {
+
+    // 开发环境执行 忽略
     setCurrentDebugFiberInDEV(nextEffect);
 
+    // 此时 effectTag 已经被重置为 1, 表示 DOM 操作已经完成
     const effectTag = nextEffect.effectTag;
 
+    // 调用生命周期函数和钩子函数
+    // 前提是类组件中调用了生命周期函数 或者函数组件中调用了 useEffect
     if (effectTag & (Update | Callback)) {
       recordEffect();
       const current = nextEffect.alternate;
+
+      // 类组件处理生命周期函数
+      // 函数组件处理钩子函数
       commitLayoutEffectOnFiber(
         root,
         current,
@@ -2440,7 +2449,10 @@ function commitLayoutEffects(
       commitAttachRef(nextEffect);
     }
 
+    // 开发环境执行 忽略
     resetCurrentDebugFiberInDEV();
+
+    // 更新循环条件
     nextEffect = nextEffect.nextEffect;
   }
 }

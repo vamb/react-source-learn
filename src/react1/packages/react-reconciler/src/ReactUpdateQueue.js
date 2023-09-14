@@ -534,20 +534,42 @@ export function checkHasForceUpdateAfterProcessing(): boolean {
   return hasForceUpdate;
 }
 
+/**
+ * 执行渲染完成之后的回调函数
+ */
 export function commitUpdateQueue<State>(
   finishedWork: Fiber,
   finishedQueue: UpdateQueue<State>,
   instance: any,
 ): void {
   // Commit the effects
+
+  // effects 为数组, 存储任务对象 (Update 对象)
+  // 但前提是在调用 render 方法时传递了回调函数, 就是 render 方法的第三个参数
   const effects = finishedQueue.effects;
+
+  // 重置 finishedQueue.effects 数组
   finishedQueue.effects = null;
+
+  // 如果传递了 render 方法的第三个参数, effect 数组就不会为 null
   if (effects !== null) {
+
+    // 遍历 effect 数组
     for (let i = 0; i < effects.length; i++) {
+
+      // 获取数组中的第 i 个需要执行的 effect
       const effect = effects[i];
+
+      // 获取 callback 回调函数
       const callback = effect.callback;
+
+      // 如果回调函数不为 null
       if (callback !== null) {
+
+        // 清空 effect 中的 callback
         effect.callback = null;
+
+        // 执行回调函数
         callCallback(callback, instance);
       }
     }

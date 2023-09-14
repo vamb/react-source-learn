@@ -361,16 +361,33 @@ function commitHookEffectListUnmount(tag: number, finishedWork: Fiber) {
   }
 }
 
+/**
+ * useEffect 回调函数调用
+ */
 function commitHookEffectListMount(tag: number, finishedWork: Fiber) {
+
+  // 获取任务队列
   const updateQueue: FunctionComponentUpdateQueue | null = (finishedWork.updateQueue: any);
+
+  // 获取 lastEffect
   let lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+
+  // 如果 lastEffect 不为 null
   if (lastEffect !== null) {
+
+    // 获取要执行的副作用
     const firstEffect = lastEffect.next;
     let effect = firstEffect;
+
+    // 通过遍历的方式调用 useEffect 中的回调函数
+    // 在组件中定义了调用了几次 useEffect 遍历就会执行几次
     do {
       if ((effect.tag & tag) === tag) {
         // Mount
         const create = effect.create;
+
+        // create 就是 useEffect 方法的第一个参数
+        // 返回值就是清理函数
         effect.destroy = create();
 
         if (__DEV__) {
@@ -469,6 +486,8 @@ function commitLifeCycles(
       // This is done to prevent sibling component effects from interfering with each other,
       // e.g. a destroy function in one component should never override a ref set
       // by a create function in another component during the same commit.
+
+      // 处理钩子函数
       commitHookEffectListMount(HookLayout | HookHasEffect, finishedWork);
 
       if (runAllPassiveEffectDestroysBeforeCreates) {
@@ -477,8 +496,14 @@ function commitLifeCycles(
       return;
     }
     case ClassComponent: {
+
+      // 获取类组件实例对象
       const instance = finishedWork.stateNode;
+
+      // 如果在类组件中存在生命周期函数判断条件就会成立
       if (finishedWork.effectTag & Update) {
+
+        // 初始渲染阶段
         if (current === null) {
           startPhaseTimer(finishedWork, 'componentDidMount');
           // We could update instance props and state here,
@@ -511,14 +536,21 @@ function commitLifeCycles(
               }
             }
           }
+
+          // 调用 componentDidMount 生命周期函数
           instance.componentDidMount();
           stopPhaseTimer();
-        } else {
+        } else { // 更新阶段
+
+          // 获取旧的 props
           const prevProps =
             finishedWork.elementType === finishedWork.type
               ? current.memoizedProps
               : resolveDefaultProps(finishedWork.type, current.memoizedProps);
+
+          // 获取旧的 state
           const prevState = current.memoizedState;
+
           startPhaseTimer(finishedWork, 'componentDidUpdate');
           // We could update instance props and state here,
           // but instead we rely on them being set during last render.
@@ -550,6 +582,10 @@ function commitLifeCycles(
               }
             }
           }
+
+          // 调用 componentDidUpdate 生命周期函数
+          // instance.__reactInternalSnapshotBeforeUpdate 快照
+          // getSnapShotBeforeUpdate 方法的返回值
           instance.componentDidUpdate(
             prevProps,
             prevState,
@@ -558,7 +594,11 @@ function commitLifeCycles(
           stopPhaseTimer();
         }
       }
+
+      // 获取任务队列
       const updateQueue = finishedWork.updateQueue;
+
+      // 如果任务队列存在
       if (updateQueue !== null) {
         if (__DEV__) {
           if (
@@ -590,6 +630,11 @@ function commitLifeCycles(
         // We could update instance props and state here,
         // but instead we rely on them being set during last render.
         // TODO: revisit this when we implement resuming.
+
+        /**
+         * 调用 ReactElement 渲染完成之后的回调函数
+         * 即 render 方法的第三个参数
+         */
         commitUpdateQueue(finishedWork, updateQueue, instance);
       }
       return;
