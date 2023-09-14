@@ -1124,7 +1124,10 @@ function performSyncWorkOnRoot(root) {
 
 function finishSyncRender(root) {
   // Set this to null to indicate there's no in-progress render.
+  // 销毁 workInProgress Fiber 树
+  // 因为待提交 Fiber 对象已经被存储在了 root.finishedWork 中
   workInProgressRoot = null;
+  // 进入 commit 阶段
   commitRoot(root);
 }
 
@@ -1867,8 +1870,12 @@ function resetChildExpirationTime(completedWork: Fiber) {
   completedWork.childExpirationTime = newChildExpirationTime;
 }
 
+// 更改任务的优先级，以最高优先级去执行 commit 操作
 function commitRoot(root) {
+  // 获取任务优先级 97 => 普通优先级
   const renderPriorityLevel = getCurrentPriorityLevel();
+  // 使用最高优先级执行当前任务，因为 commit 阶段不可以被打断
+  // ImmediatePriority，优先级为 99，优先级最高
   runWithPriority(
     ImmediatePriority,
     commitRootImpl.bind(null, root, renderPriorityLevel),
@@ -1878,14 +1885,21 @@ function commitRoot(root) {
 
 function commitRootImpl(root, renderPriorityLevel) {
   do {
+
     // `flushPassiveEffects` will call `flushSyncUpdateQueue` at the end, which
     // means `flushPassiveEffects` will sometimes result in additional
     // passive effects. So we need to keep flushing in a loop until there are
     // no more pending effects.
     // TODO: Might be better if `flushPassiveEffects` did not automatically
     // flush synchronous work at the end, to avoid factoring hazards like this.
+
+
+    // 触发 useEffect 回调与其他同步任务
+    // 由于这些任务可能触发新的渲染
+    // 所以这里要一直遍历执行知道没有任务
     flushPassiveEffects();
   } while (rootWithPendingPassiveEffects !== null);
+  // 开发环境执行 忽略
   flushRenderPhaseStrictModeWarningsInDEV();
 
   invariant(
@@ -1893,11 +1907,19 @@ function commitRootImpl(root, renderPriorityLevel) {
     'Should not already be working.',
   );
 
+  // 获取待提交 Fiber 对象 rootFiber
   const finishedWork = root.finishedWork;
+
+  // 1073741823
   const expirationTime = root.finishedExpirationTime;
+
+  // 如果没有任务要执行
   if (finishedWork === null) {
+    // 阻止程序继续向下执行
     return null;
   }
+
+  // 重置为默认值
   root.finishedWork = null;
   root.finishedExpirationTime = NoWork;
 
@@ -1909,6 +1931,9 @@ function commitRootImpl(root, renderPriorityLevel) {
 
   // commitRoot never returns a continuation; it always finishes synchronously.
   // So we can clear these now to allow a new callback to be scheduled.
+
+  // commitRoot 是最后阶段，不会再被异步调用了
+  // 所以清除 callback 相关属性
   root.callbackNode = null;
   root.callbackExpirationTime = NoWork;
   root.callbackPriority = NoPriority;
@@ -1921,12 +1946,15 @@ function commitRootImpl(root, renderPriorityLevel) {
   const remainingExpirationTimeBeforeCommit = getRemainingExpirationTime(
     finishedWork,
   );
+
+  // 重置优先级相关属性
   markRootFinishedAtTime(
     root,
     expirationTime,
     remainingExpirationTimeBeforeCommit,
   );
 
+  // false
   if (root === workInProgressRoot) {
     // We can reset these now that they are finished.
     workInProgressRoot = null;
@@ -1939,12 +1967,15 @@ function commitRootImpl(root, renderPriorityLevel) {
   }
 
   // Get the list of effects.
+  // 将 effectList 赋值给 firstEffect
+  // 由于每个 Fiber 的 effectList 只包含他的子孙节点
   let firstEffect;
   if (finishedWork.effectTag > PerformedWork) {
     // A fiber's effect list consists only of its children, not itself. So if
     // the root has an effect, we need to add it to the end of the list. The
     // resulting list is the set that would belong to the root's parent, if it
     // had one; that is, all the effects in the tree including the root.
+
     if (finishedWork.lastEffect !== null) {
       finishedWork.lastEffect.nextEffect = finishedWork;
       firstEffect = finishedWork.firstEffect;
@@ -1953,11 +1984,21 @@ function commitRootImpl(root, renderPriorityLevel) {
     }
   } else {
     // There is no effect on the root.
+    // 根节点没有 effectTag
+    // 获取要执行 DOM 操作的副作用列表
     firstEffect = finishedWork.firstEffect;
   }
 
+  // 以上代码为 commit 之前所做的准备工作
+  // firstEffect 会在 commit 的三个子阶段会用到
+
+  // true
   if (firstEffect !== null) {
+
+    // 8
     const prevExecutionContext = executionContext;
+
+    // 40
     executionContext |= CommitContext;
     const prevInteractions = pushInteractions(root);
 
@@ -1974,6 +2015,9 @@ function commitRootImpl(root, renderPriorityLevel) {
     startCommitSnapshotEffectsTimer();
     prepareForCommit(root.containerInfo);
     nextEffect = firstEffect;
+
+    // commit 第一个子阶段
+    // 处理类组件的 getSnapShotBeforeUpdate 生命周期函数
     do {
       if (__DEV__) {
         invokeGuardedCallback(null, commitBeforeMutationEffects, null);
@@ -2003,6 +2047,8 @@ function commitRootImpl(root, renderPriorityLevel) {
 
     // The next phase is the mutation phase, where we mutate the host tree.
     startCommitHostEffectsTimer();
+
+    // commit 第二个子阶段
     nextEffect = firstEffect;
     do {
       if (__DEV__) {
@@ -2042,6 +2088,8 @@ function commitRootImpl(root, renderPriorityLevel) {
     // the host tree after it's been mutated. The idiomatic use case for this is
     // layout, but class component lifecycles also fire here for legacy reasons.
     startCommitLifeCyclesTimer();
+
+    // commit 第三个子阶段
     nextEffect = firstEffect;
     do {
       if (__DEV__) {
@@ -2070,6 +2118,7 @@ function commitRootImpl(root, renderPriorityLevel) {
     } while (nextEffect !== null);
     stopCommitLifeCyclesTimer();
 
+    // 重置 nextEffect
     nextEffect = null;
 
     // Tell Scheduler to yield at the end of the frame, so the browser has an
