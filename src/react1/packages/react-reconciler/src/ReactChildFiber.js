@@ -824,11 +824,13 @@ function ChildReconciler(shouldTrackSideEffects) {
     // 上一次创建的 Fiber 对象
     let previousNewFiber: Fiber | null = null;
     // 初始渲染没有旧的子级 所以为 null
-
     let oldFiber = currentFirstChild;
+
     let lastPlacedIndex = 0;
     let newIdx = 0;
     let nextOldFiber = null;
+
+    // 初始渲染 oldFiber 为 null 循环不执行
     for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
       if (oldFiber.index > newIdx) {
         nextOldFiber = oldFiber;
@@ -874,6 +876,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       oldFiber = nextOldFiber;
     }
 
+    // 初始渲染不执行
     if (newIdx === newChildren.length) {
       // We've reached the end of the new children. We can delete the rest.
       deleteRemainingChildren(returnFiber, oldFiber);
@@ -917,6 +920,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       return resultingFirstChild;
     }
 
+    // 下面的代码初始渲染不执行
     // Add all children to a key map for quick lookups.
     const existingChildren = mapRemainingChildren(returnFiber, oldFiber);
 
@@ -951,6 +955,7 @@ function ChildReconciler(shouldTrackSideEffects) {
       }
     }
 
+    // 初始渲染不执行
     if (shouldTrackSideEffects) {
       // Any existing children that weren't consumed above were deleted. We need
       // to add them to the deletion list.
