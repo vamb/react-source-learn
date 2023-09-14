@@ -426,10 +426,18 @@ export function appendChildToContainer(
   child: Instance | TextInstance,
 ): void {
   let parentNode;
+
+  // 监测 container 是否为注释节点
   if (container.nodeType === COMMENT_NODE) {
+
+    // 获取父级的父级
     parentNode = (container.parentNode: any);
+
+    // 将子级节点插入到注释节点前面
     parentNode.insertBefore(child, container);
   } else {
+
+    // 直接将 child 插入到父级中
     parentNode = container;
     parentNode.appendChild(child);
   }
@@ -464,9 +472,15 @@ export function insertInContainerBefore(
   child: Instance | TextInstance,
   beforeChild: Instance | TextInstance | SuspenseInstance,
 ): void {
+
+  // 如果父容器是注释节点
   if (container.nodeType === COMMENT_NODE) {
+
+    // 找到注释节点得父级节点 因为注释节点没法调用 insertBefore
     (container.parentNode: any).insertBefore(child, beforeChild);
   } else {
+
+    // 将 child 插入到 beforeChild 前面
     container.insertBefore(child, beforeChild);
   }
 }

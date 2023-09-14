@@ -2301,17 +2301,27 @@ function commitBeforeMutationEffects() {
   }
 }
 
+// commit 阶段的第二个子阶段
+// 根据 effectTag 执行 DOM 操作
 function commitMutationEffects(root: FiberRoot, renderPriorityLevel) {
   // TODO: Should probably move the bulk of this function to commitWork.
+
+  // 循环 effect 链
   while (nextEffect !== null) {
+    // 开发环境执行 忽略
     setCurrentDebugFiberInDEV(nextEffect);
 
+    // 获取 effectTag
+    // 初始渲染第一次循环为 App 组件
+    // 即将根组件及内部所有内容一次性添加到页面中
     const effectTag = nextEffect.effectTag;
 
+    // 如果有文本节点，将 value 设置为 ''
     if (effectTag & ContentReset) {
       commitResetTextContent(nextEffect);
     }
 
+    // 更新 ref
     if (effectTag & Ref) {
       const current = nextEffect.alternate;
       if (current !== null) {
@@ -2323,34 +2333,56 @@ function commitMutationEffects(root: FiberRoot, renderPriorityLevel) {
     // updates, and deletions. To avoid needing to add a case for every possible
     // bitmap value, we remove the secondary effects from the effect tag and
     // switch on that value.
+
+    // 根据 effectTag 分别处理
     let primaryEffectTag =
       effectTag & (Placement | Update | Deletion | Hydrating);
+
+    // 匹配 effectTag
+    // 初始渲染 primaryEffectTag 为 2 匹配到 Placement
     switch (primaryEffectTag) {
+
+      // 针对该节点及子节点进行插入操作
       case Placement: {
         commitPlacement(nextEffect);
         // Clear the "placement" from effect tag so that we know that this is
         // inserted, before any life-cycles like componentDidMount gets called.
         // TODO: findDOMNode doesn't rely on this any more but isMounted does
         // and isMounted is deprecated anyway so we should be able to kill this.
+
+        // effectTag 从 3 变为 1
+        // 从 effect 标签中清除 "placement" 重置 effectTag 值
+        // 以便我们知道在调用诸如componentDidMount之类的任何生命周期之前已将其插入。
         nextEffect.effectTag &= ~Placement;
         break;
       }
+
+      // 插入并更新 DOM
       case PlacementAndUpdate: {
         // Placement
+
+        // 插入
         commitPlacement(nextEffect);
         // Clear the "placement" from effect tag so that we know that this is
         // inserted, before any life-cycles like componentDidMount gets called.
+
+
         nextEffect.effectTag &= ~Placement;
 
         // Update
+        // 更新
         const current = nextEffect.alternate;
         commitWork(current, nextEffect);
         break;
       }
+
+      // 服务器端渲染
       case Hydrating: {
         nextEffect.effectTag &= ~Hydrating;
         break;
       }
+
+      // 服务器端渲染
       case HydratingAndUpdate: {
         nextEffect.effectTag &= ~Hydrating;
 
@@ -2359,11 +2391,15 @@ function commitMutationEffects(root: FiberRoot, renderPriorityLevel) {
         commitWork(current, nextEffect);
         break;
       }
+
+      // 更新 DOM
       case Update: {
         const current = nextEffect.alternate;
         commitWork(current, nextEffect);
         break;
       }
+
+      // 删除 DOM
       case Deletion: {
         commitDeletion(root, nextEffect, renderPriorityLevel);
         break;

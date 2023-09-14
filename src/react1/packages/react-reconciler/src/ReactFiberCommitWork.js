@@ -1017,12 +1017,23 @@ function commitContainer(finishedWork: Fiber) {
   );
 }
 
+// 获取 HostRootFiber 对象
 function getHostParentFiber(fiber: Fiber): Fiber {
+
+  // 获取当前 Fiber 父级
   let parent = fiber.return;
+
+  // 查看父级是否为 null
   while (parent !== null) {
+
+    // 查看父级是否为 hostRoot
     if (isHostParent(parent)) {
+
+      // 返回
       return parent;
     }
+
+    // 继续向上查找
     parent = parent.return;
   }
   invariant(
@@ -1032,6 +1043,7 @@ function getHostParentFiber(fiber: Fiber): Fiber {
   );
 }
 
+// 获取非组件父级
 function isHostParent(fiber: Fiber): boolean {
   return (
     fiber.tag === HostComponent ||
@@ -1086,25 +1098,45 @@ function getHostSibling(fiber: Fiber): ?Instance {
   }
 }
 
+// 挂载 DOM 元素
 function commitPlacement(finishedWork: Fiber): void {
   if (!supportsMutation) {
     return;
   }
 
   // Recursively insert all host nodes into the parent.
+  // finishedWork 初始化渲染时为根组件 Fiber 对象
+  // 获取非组件父级 Fiber 对象
+  // 初始渲染时为 <div id="root"></div>
   const parentFiber = getHostParentFiber(finishedWork);
 
   // Note: these two variables *must* always be updated together.
+
+  // 存储真正的父级 DOM 节点对象
   let parent;
+
+  // 是否为渲染容器
+  // 渲染容器和普通react元素的主要区别在于是否需要特殊处理注释节点
   let isContainer;
+
+  // 获取父级 DOM 节点对象
+  // 但是初始渲染时 rootFiber 对象中的 stateNode 存储的是 FiberRoot
   const parentStateNode = parentFiber.stateNode;
+
+  // 判断父节点的类型
+  // 初始渲染时是 hostRoot 3
   switch (parentFiber.tag) {
     case HostComponent:
       parent = parentStateNode;
       isContainer = false;
       break;
     case HostRoot:
+
+      // 获取真正的 DOM 节点对象
+      // <div id="root"></div>
       parent = parentStateNode.containerInfo;
+
+      // 是 container 容器
       isContainer = true;
       break;
     case HostPortal:
@@ -1124,6 +1156,8 @@ function commitPlacement(finishedWork: Fiber): void {
           'in React. Please file an issue.',
       );
   }
+
+  // 如果父节点是文本节点的话
   if (parentFiber.effectTag & ContentReset) {
     // Reset the text content of the parent before doing any insertions
     resetTextContent(parent);
@@ -1131,28 +1165,54 @@ function commitPlacement(finishedWork: Fiber): void {
     parentFiber.effectTag &= ~ContentReset;
   }
 
+  // 查看当前节点是否有下一个兄弟节点
+  // 有, 执行 insertBefore
+  // 没有, 执行 appendChild
   const before = getHostSibling(finishedWork);
+
   // We only have the top Fiber that was inserted but we need to recurse down its
   // children to find all the terminal nodes.
+
+  // 渲染容器
   if (isContainer) {
+
+    // 向父节点中追加节点 或者 将子节点插入到 before 节点的前面
     insertOrAppendPlacementNodeIntoContainer(finishedWork, before, parent);
   } else {
+
+    // 非渲染容器
+    // 向父节点中追加节点 或者 将子节点插入到 before 节点的前面
     insertOrAppendPlacementNode(finishedWork, before, parent);
   }
 }
 
+// 向容器中追加 | 插入到后一个节点的前面
 function insertOrAppendPlacementNodeIntoContainer(
   node: Fiber,
   before: ?Instance,
   parent: Container,
 ): void {
   const {tag} = node;
+
+  // 如果待插入的节点是一个 DOM 元素或者文本的话
+  // 比如 组件fiber => false div => true
   const isHost = tag === HostComponent || tag === HostText;
+
   if (isHost || (enableFundamentalAPI && tag === FundamentalComponent)) {
+
+    // 获取 DOM 节点
     const stateNode = isHost ? node.stateNode : node.stateNode.instance;
+
+    // 如果 before 存在
     if (before) {
+
+      // 插入到 before 前面
+      // src/react1/packages/react-dom/src/client/ReactDOMHostConfig.js -> insertInContainerBefore()
       insertInContainerBefore(parent, stateNode, before);
     } else {
+
+      // 追加到父容器中
+      // src/react1/packages/react-dom/src/client/ReactDOMHostConfig.js -> appendChildToContainer()
       appendChildToContainer(parent, stateNode);
     }
   } else if (tag === HostPortal) {
@@ -1160,12 +1220,25 @@ function insertOrAppendPlacementNodeIntoContainer(
     // down its children. Instead, we'll get insertions from each child in
     // the portal directly.
   } else {
+
+    // 如果是组件节点, 比如 ClassComponent, 则找它的第一个子节点(DOM 元素)
+    // 进行插入操作
     const child = node.child;
     if (child !== null) {
+
+      // 向父级中追加子节点或者将子节点插入到 before 的前面
       insertOrAppendPlacementNodeIntoContainer(child, before, parent);
+
+      // 获取下一个兄弟节点
       let sibling = child.sibling;
+
+      // 如果兄弟节点存在
       while (sibling !== null) {
+
+        // 向父级中追加子节点或者将子节点插入到 before 的前面
         insertOrAppendPlacementNodeIntoContainer(sibling, before, parent);
+
+        // 同步兄弟节点
         sibling = sibling.sibling;
       }
     }
