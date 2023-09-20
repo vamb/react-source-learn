@@ -465,6 +465,8 @@ export function createWorkInProgress(current: Fiber, pendingProps: any): Fiber {
       current.key,
       current.mode,
     );
+    console.log('workInProgress createFiber -> result', workInProgress)
+
     // 属性复用
     workInProgress.elementType = current.elementType;
     workInProgress.type = current.type;

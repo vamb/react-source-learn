@@ -10,7 +10,7 @@ import App from './NewApp'
 //   console.log('this', this)
 // });
 
-ReactDOM.render(<App />, document.getElementById('root'))
+ReactDOM.render(<App rootProps={{rp1: 'rp1', rp2: 2}} />, document.getElementById('root'))
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
